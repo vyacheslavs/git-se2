@@ -27,9 +27,14 @@ set(USE_HTTPS OFF)
 set(USE_NTLMCLIENT OFF)
 set(EXPECTED_BUILD_PACKAGE OFF)
 set(BUILD_TESTING OFF)
+set(FMT_DOC OFF)
+set(FMT_INSTALL OFF)
+set(FMT_TEST OFF)
+set(FMT_CUDA_TEST OFF)
 
 add_subdirectory(libgit2)
 add_subdirectory(expected)
+add_subdirectory(libfmt)
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
@@ -44,7 +49,7 @@ set_target_properties(appgit-se2 PROPERTIES
 
 target_include_directories(appgit-se2 PRIVATE ${PROJECT_SOURCE_DIR}/libgit2/include)
 target_link_libraries(appgit-se2
-    PRIVATE Qt6::Quick Qt6::QuickControls2 libgit2package expected
+    PRIVATE Qt6::Quick Qt6::QuickControls2 libgit2package expected fmt
 )
 
 include(GNUInstallDirs)
