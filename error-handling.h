@@ -9,6 +9,7 @@ namespace gitse2 {
     enum class ErrorCode {
         None,
         FirstCommitOmittedError,
+        GitRepositoryOpenError,
     };
 
     using explain_aux_callback = std::string(*)(const struct Error&);
