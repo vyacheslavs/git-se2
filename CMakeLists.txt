@@ -17,13 +17,13 @@ qt_add_qml_module(appgit-se2
     VERSION 1.0
     QML_FILES
         Main.qml
-        SOURCES error-handling.h error-handling.cpp
+        SOURCES error-handling.h error-handling.cpp program_options.h program_options.cpp
 )
 
 set(BUILD_TESTS OFF)
 set(BUILD_CLI OFF)
 set(USE_HTTPS OFF)
-SET(USE_NTLMCLIENT OFF)
+set(USE_NTLMCLIENT OFF)
 set(EXPECTED_BUILD_PACKAGE OFF)
 set(BUILD_TESTING OFF)
 
