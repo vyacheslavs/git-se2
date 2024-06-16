@@ -1,6 +1,7 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include "program_options.h"
+#include "repository.h"
 
 int main(int argc, char *argv[])
 {
@@ -10,6 +11,12 @@ int main(int argc, char *argv[])
     if (!options) {
         qCritical().noquote() << gitse2::explain_nested_error(options.error());
         return 1;
+    }
+
+    auto repo = gitse2::Repository::open();
+    if (!repo) {
+        qCritical().noquote() << gitse2::explain_nested_error(repo.error());
+        return 2;
     }
 
     QQmlApplicationEngine engine;
