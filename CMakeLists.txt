@@ -19,6 +19,13 @@ qt_add_qml_module(appgit-se2
         Main.qml
 )
 
+set(BUILD_TESTS OFF)
+set(BUILD_CLI OFF)
+set(USE_HTTPS OFF)
+SET(USE_NTLMCLIENT OFF)
+
+add_subdirectory(libgit2)
+
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
 # explicit, fixed bundle identifier manually though.
@@ -30,8 +37,9 @@ set_target_properties(appgit-se2 PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
+target_include_directories(appgit-se2 PRIVATE ${PROJECT_SOURCE_DIR}/libgit2/include)
 target_link_libraries(appgit-se2
-    PRIVATE Qt6::Quick Qt6::QuickControls2
+    PRIVATE Qt6::Quick Qt6::QuickControls2 libgit2package
 )
 
 include(GNUInstallDirs)
