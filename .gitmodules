@@ -6,3 +6,8 @@
 	path = expected
 	url = https://github.com/TartanLlama/expected.git
 	shallow = true
+[submodule "libfmt"]
+	path = libfmt
+	url = https://github.com/fmtlib/fmt.git
+	shallow = true
+
