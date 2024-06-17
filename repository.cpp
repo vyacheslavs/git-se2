@@ -73,6 +73,30 @@ public:
 }
 
 Repository::~Repository()
+Result<git_annotated_commit_ptr> Repository::resolve_commit(const std::string &commit) {
+    int err = 0;
+    git_reference *ref = NULL;
+    git_annotated_commit* target = nullptr;
+
+    err = git_reference_dwim(&ref, m_repo.get(), commit.c_str());
+    if (err == GIT_OK) {
+        git_annotated_commit_from_ref(&target, m_repo.get(), ref);
+        git_reference_free(ref);
+        return git_annotated_commit_ptr(target);
+    }
+
+    git_object *obj;
+    err = git_revparse_single(&obj, m_repo.get(), commit.c_str());
+    if (err == GIT_OK) {
+        err = git_annotated_commit_lookup(&target, m_repo.get(), git_object_id(obj));
+        git_object_free(obj);
+    }
+
+    if (err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitGenericError, explain_repository_fail, err);
+
+    return git_annotated_commit_ptr(target);
+}
 {
     git_repository_free(m_repo);
 }
