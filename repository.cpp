@@ -153,3 +153,15 @@ Result<git_commit_ptr> Repository::checkout_commit(const std::string &commit) {
 
     return target_commit;
 }
+
+Result<> Repository::create_branch(const std::string &branch, const git_commit_ptr& commit) {
+    // will be creating branch on HEAD
+
+    git_reference* ref = nullptr; // free reference???
+    int err = git_branch_create(&ref, m_repo.get(), branch.c_str(), commit.get(), 1);
+    if (err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitGenericError, explain_repository_fail, err);
+
+    git_reference_ptr ref_ptr(ref);
+    return {};
+}
