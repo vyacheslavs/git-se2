@@ -97,6 +97,22 @@ Result<git_annotated_commit_ptr> Repository::resolve_commit(const std::string &c
 
     return git_annotated_commit_ptr(target);
 }
+
+Result<> Repository::resolve_commit(const std::string &commit, git_annotated_commit_ptr &gac, git_commit_ptr &gc)
 {
     git_repository_free(m_repo);
+    auto rval = resolve_commit(commit);
+    if (!rval)
+        return unexpected_nested(ErrorCode::GitGenericError, rval.error());
+
+    gac = std::move(rval.value());
+
+    git_commit *target_commit = nullptr;
+    int err = git_commit_lookup(&target_commit, m_repo.get(), git_annotated_commit_id(gac.get()));
+    if (err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitGenericError, explain_repository_fail, err);
+
+    gc.reset(target_commit);
+
+    return {};
 }
