@@ -1,6 +1,8 @@
 #include "repository.h"
+#include "qdebug.h"
 #include <qglobal.h>
 #include <sstream>
+#include <fmt/format.h>
 
 using namespace gitse2;
 
@@ -48,6 +50,18 @@ Result<RepositoryRef> Repository::open()
     int error = git_repository_open_ext(&out_ref->m_repo, out_ref->m_repo_path.c_str(), 0, NULL);
     if (error != 0 || !out_ref->m_repo)
         return unexpected_explained(ErrorCode::GitRepositoryOpenError, explain_repository_open_fail, error);
+
+template <> class fmt::formatter<git_commit_ptr> {
+public:
+    constexpr auto parse (format_parse_context& ctx) { return ctx.begin(); }
+    template <typename Context>
+    constexpr auto format (const git_commit_ptr& commit, Context& ctx) const {
+        char oid_str[GIT_OID_HEXSZ + 1] = {};
+        auto oid = git_commit_id(commit.get());
+        git_oid_tostr(oid_str, sizeof(oid_str), oid);
+        return format_to(ctx.out(), "{}", oid_str);
+    }
+};
 
     return {};
 }
