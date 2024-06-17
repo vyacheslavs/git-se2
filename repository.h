@@ -18,6 +18,7 @@ namespace gitse2 {
 
             static Result<RepositoryRef> open();
             ~Repository();
+            [[nodiscard]] Result<> squash(const std::string& first_commit);
         private:
             Repository() = default;
 

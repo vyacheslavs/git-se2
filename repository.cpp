@@ -84,6 +84,65 @@ public:
     }
 };
 
+Result<> Repository::squash(const std::string& first_commit) {
+    git_annotated_commit_ptr gac;
+    git_commit_ptr head_commit;
+    if (auto resolve_rval = resolve_commit("HEAD", gac, head_commit); !resolve_rval)
+        return unexpected_nested(ErrorCode::GitGenericError, resolve_rval.error());
+
+    auto rval = checkout_commit(first_commit);
+    if (!rval)
+        return unexpected_nested(ErrorCode::GitGenericError, rval.error());
+
+    git_commit_ptr new_head(std::move(rval.value()));
+
+    const auto new_branch_name = fmt::format("git-se/{}", first_commit);
+    auto rval_branch = create_branch(new_branch_name, new_head);
+    if (!rval_branch)
+        return unexpected_nested(ErrorCode::GitGenericError, rval_branch.error());
+
+    if (auto err = git_repository_set_head(m_repo.get(), fmt::format("refs/heads/git-se/{}", first_commit).c_str()); err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitRepositoryOpenError, explain_repository_fail, err);
+
+    if (auto apply_rval = apply_diff(new_head, head_commit); !apply_rval)
+        return unexpected_nested(ErrorCode::GitGenericError, rval_branch.error());
+
+    git_oid tree_id, commit_id;
+    git_index *index = nullptr;
+
+    if (auto err = git_repository_index(&index, m_repo.get()); err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitRepositoryOpenError, explain_repository_fail, err);
+
+    git_index_ptr index_ptr(index);
+
+    if (auto err = git_index_add_all(index, NULL, GIT_INDEX_ADD_DEFAULT, NULL, NULL); err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitRepositoryOpenError, explain_repository_fail, err);
+
+    if (auto err = git_index_write(index); err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitRepositoryOpenError, explain_repository_fail, err);
+
+    if (auto err = git_index_write_tree(&tree_id, index); err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitRepositoryOpenError, explain_repository_fail, err);
+
+    git_tree* tree = nullptr;
+    if (auto err = git_tree_lookup(&tree, m_repo.get(), &tree_id); err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitRepositoryOpenError, explain_repository_fail, err);
+
+    git_tree_ptr tree_ptr(tree);
+
+    git_signature *sig = NULL;
+    if (auto err = git_signature_now(&sig, "Git SE", "git-se@git-se.se"); err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitRepositoryOpenError, explain_repository_fail, err);
+
+    git_signature_ptr sig_ptr(sig);
+
+    const git_commit* commit2 = new_head.get();
+
+    if (auto err = git_commit_create_v(
+            &commit_id, m_repo.get(), "HEAD", sig, sig, NULL, "Git SE auto generated message", tree,
+            1, commit2); err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitRepositoryOpenError, explain_repository_fail, err);
+
     return {};
 }
 
