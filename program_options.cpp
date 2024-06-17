@@ -23,6 +23,10 @@ gitse2::Result<gitse2::ProgramOptions> gitse2::ProgramOptions::parse_program_opt
     if (posArgs.empty())
         return unexpected_explained(ErrorCode::FirstCommitOmittedError, explain_command_options_error, parser.helpText());
 
-    opts.m_first_commit = posArgs.at(0);
+    opts.m_first_commit = posArgs.at(0).toStdString();
     return opts;
+}
+
+const std::string &gitse2::ProgramOptions::first_commit() {
+    return m_first_commit;
 }

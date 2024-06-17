@@ -9,10 +9,11 @@ namespace gitse2 {
     {
         public:
             static Result<ProgramOptions> parse_program_options(const QCoreApplication& app);
+            const std::string& first_commit();
         private:
             ProgramOptions() = default;
 
-            QString m_first_commit;
+            std::string m_first_commit;
     };
 }
 

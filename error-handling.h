@@ -10,6 +10,7 @@ namespace gitse2 {
         None,
         FirstCommitOmittedError,
         GitRepositoryOpenError,
+        GitGenericError,
     };
 
     using explain_aux_callback = std::string(*)(const struct Error&);
