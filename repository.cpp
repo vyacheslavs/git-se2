@@ -116,3 +116,25 @@ Result<> Repository::resolve_commit(const std::string &commit, git_annotated_com
 
     return {};
 }
+
+Result<git_commit_ptr> Repository::checkout_commit(const std::string &commit) {
+
+    git_annotated_commit_ptr ac_target_commit;
+    git_commit_ptr target_commit;
+    git_checkout_options checkout_opts = GIT_CHECKOUT_OPTIONS_INIT;
+    checkout_opts.checkout_strategy = GIT_CHECKOUT_SAFE;
+
+    auto rval = resolve_commit(commit, ac_target_commit, target_commit);
+    if (!rval)
+        return unexpected_nested(ErrorCode::GitGenericError, rval.error());
+
+    int err = git_checkout_tree(m_repo.get(), (const git_object *)target_commit.get(), &checkout_opts);
+    if (err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitGenericError, explain_repository_fail, err);
+
+    err = git_repository_set_head_detached_from_annotated(m_repo.get(), ac_target_commit.get());
+    if (err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitGenericError, explain_repository_fail, err);
+
+    return target_commit;
+}
