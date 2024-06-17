@@ -17,7 +17,6 @@ namespace gitse2 {
             Q_DISABLE_COPY_MOVE(Repository)
 
             static Result<RepositoryRef> open();
-            ~Repository();
             [[nodiscard]] Result<> squash(const std::string& first_commit);
         private:
             Repository() = default;

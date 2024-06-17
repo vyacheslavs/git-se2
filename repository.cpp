@@ -146,7 +146,6 @@ Result<> Repository::squash(const std::string& first_commit) {
     return {};
 }
 
-Repository::~Repository()
 Result<git_annotated_commit_ptr> Repository::resolve_commit(const std::string &commit) {
     int err = 0;
     git_reference *ref = NULL;
@@ -174,7 +173,6 @@ Result<git_annotated_commit_ptr> Repository::resolve_commit(const std::string &c
 
 Result<> Repository::resolve_commit(const std::string &commit, git_annotated_commit_ptr &gac, git_commit_ptr &gc)
 {
-    git_repository_free(m_repo);
     auto rval = resolve_commit(commit);
     if (!rval)
         return unexpected_nested(ErrorCode::GitGenericError, rval.error());
