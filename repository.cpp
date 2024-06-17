@@ -165,3 +165,32 @@ Result<> Repository::create_branch(const std::string &branch, const git_commit_p
     git_reference_ptr ref_ptr(ref);
     return {};
 }
+
+Result<> Repository::apply_diff(const git_commit_ptr &commit1, const git_commit_ptr &commit2) {
+    git_tree* tree1 = nullptr;
+    git_tree* tree2 = nullptr;
+
+    if (auto err = git_commit_tree(&tree1, commit1.get()); err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitGenericError, explain_repository_fail, err);
+
+    git_tree_ptr tree1_ptr(tree1);
+
+    if (auto err = git_commit_tree(&tree2, commit2.get()); err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitGenericError, explain_repository_fail, err);
+
+    git_tree_ptr tree2_ptr(tree2);
+
+    git_diff *diff = nullptr;
+    if (auto err = git_diff_tree_to_tree(&diff, m_repo.get(), tree1, tree2, NULL); err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitGenericError, explain_repository_fail, err);
+
+    git_diff_ptr diff_ptr(diff);
+
+    if (auto err = git_apply(m_repo.get(), diff, GIT_APPLY_LOCATION_BOTH, nullptr); err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitGenericError, explain_repository_fail, err);
+
+    // now commit changes
+
+    return {};
+}
+

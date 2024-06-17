@@ -28,6 +28,7 @@ namespace gitse2 {
             [[nodiscard]] Result<> resolve_commit(const std::string& commit, git_annotated_commit_ptr& gac, git_commit_ptr& gc);
             [[nodiscard]] Result<git_commit_ptr> checkout_commit(const std::string& commit);
             [[nodiscard]] Result<> create_branch(const std::string& branch, const git_commit_ptr& commit);
+            [[nodiscard]] Result<> apply_diff(const git_commit_ptr& commit1, const git_commit_ptr& commit2);
     };
 }
 
