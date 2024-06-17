@@ -6,7 +6,7 @@ std::string gitse2::explain_nested_error(const Error& e) {
     std::stringstream ss;
     unwind_nested(e, [&](const Error& ex) {
         if (is_nested_error(ex))
-            ss << ex.fun_name << " ("<<ex.source<<":"<<ex.source_line<<")\n";
+            ss << ex.fun_name << " (file://"<<ex.source<<":"<<ex.source_line<<")\n";
         else if (ex.cb)
             ss << ex.cb(ex);
         else
@@ -17,7 +17,7 @@ std::string gitse2::explain_nested_error(const Error& e) {
 
 std::string gitse2::explain_generic(const Error& ex) {
     std::stringstream ss;
-    ss << ex.fun_name << " ("<<ex.source<<":"<<ex.source_line<<") "<<code_to_string(ex.code);
+    ss << ex.fun_name << " (file://"<<ex.source<<":"<<ex.source_line<<") "<<code_to_string(ex.code);
     return ss.str();
 }
 
