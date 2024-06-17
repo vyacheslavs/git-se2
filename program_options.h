@@ -12,7 +12,7 @@ namespace gitse2 {
         private:
             ProgramOptions() = default;
 
-            QString m_first_commit;
+            std::string m_first_commit;
     };
 }
 
