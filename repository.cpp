@@ -47,9 +47,15 @@ Result<RepositoryRef> Repository::open()
     _initializer->init();
     RepositoryRef out_ref(new Repository());
 
-    int error = git_repository_open_ext(&out_ref->m_repo, out_ref->m_repo_path.c_str(), 0, NULL);
-    if (error != 0 || !out_ref->m_repo)
+    git_repository* repo = nullptr;
+    int error = git_repository_open_ext(&repo, out_ref->m_repo_path.c_str(), 0, NULL);
+    if (error != 0 || !repo)
         return unexpected_explained(ErrorCode::GitRepositoryOpenError, explain_repository_open_fail, error);
+
+    out_ref->m_repo.reset(repo);
+
+    return out_ref;
+}
 
 template <> class fmt::formatter<git_commit_ptr> {
 public:

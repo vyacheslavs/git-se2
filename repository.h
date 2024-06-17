@@ -5,6 +5,7 @@
 #include "error-handling.h"
 #include <git2.h>
 #include <QtCore/qglobal.h>
+#include "git-etcetera.h"
 
 namespace gitse2 {
 
@@ -21,7 +22,7 @@ namespace gitse2 {
             Repository() = default;
 
             std::string m_repo_path {"."};
-            git_repository* m_repo;
+            git_repository_ptr m_repo;
     };
 }
 
