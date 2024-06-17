@@ -19,6 +19,12 @@ int main(int argc, char *argv[])
         return 2;
     }
 
+    auto rval = repo.value()->squash(options.value().first_commit());
+    if (!rval) {
+        qCritical().noquote() << gitse2::explain_nested_error(rval.error());
+        return 3;
+    }
+
     QQmlApplicationEngine engine;
     const QUrl url(QStringLiteral("qrc:/git-se2/Main.qml"));
     QObject::connect(
