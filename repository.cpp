@@ -42,6 +42,21 @@ static std::string explain_repository_open_fail(const Error& e) {
     return ss.str();
 }
 
+static std::string explain_repository_fail(const Error& e) {
+    const git_error *last_error = giterr_last();
+
+    std::stringstream ss;
+
+    ss << explain_generic(e);
+    ss << "libgit2 error = " << std::any_cast<int>(e.aux);
+    if (last_error) {
+        ss << ", last_error: "<<last_error->message<<"\n";
+    }
+
+    return ss.str();
+}
+
+
 Result<RepositoryRef> Repository::open()
 {
     _initializer->init();
