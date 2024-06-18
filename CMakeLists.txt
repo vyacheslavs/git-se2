@@ -19,6 +19,8 @@ qt_add_qml_module(appgit-se2
         Main.qml
         SOURCES error-handling.h error-handling.cpp program_options.h program_options.cpp
         SOURCES repository.h repository.cpp git-etcetera.h
+        SOURCES squashdiff.h squashdiff.cpp
+        SOURCES squashdifflist.h squashdifflist.cpp
 )
 
 set(BUILD_TESTS OFF)

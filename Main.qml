@@ -37,31 +37,23 @@ Window {
             clip: true
 
             RowLayout {
-                SplitView {
-                    Layout.preferredWidth: scroll_view.width
-                    Layout.preferredHeight: scroll_view.height
+                Repeater {
+                    model: repeater_model
 
-                    TreeView {
-                        id: treeView
-                        clip: true
-                        SplitView.preferredHeight: scroll_view.height
-                        SplitView.preferredWidth: 150
-                    }
+                    SplitView {
+                        Layout.preferredWidth: scroll_view.width
+                        Layout.preferredHeight: scroll_view.height
 
-                    Item {
-                        // here shoud be a patch view
-                    }
-                }
-                SplitView {
-                    Layout.preferredWidth: scroll_view.width
-                    Layout.preferredHeight: scroll_view.height
+                        TreeView {
+                            id: treeView
+                            clip: true
+                            SplitView.preferredHeight: scroll_view.height
+                            SplitView.preferredWidth: 150
+                        }
 
-                    Item {
-                        SplitView.preferredWidth: 150
-                    }
-
-                    Item {
-
+                        Item {
+                            // here shoud be a patch view
+                        }
                     }
                 }
             }

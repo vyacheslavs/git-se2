@@ -86,26 +86,27 @@ public:
 
 Result<> Repository::squash(const std::string& first_commit) {
     git_annotated_commit_ptr gac;
-    git_commit_ptr head_commit;
-    if (auto resolve_rval = resolve_commit("HEAD", gac, head_commit); !resolve_rval)
-        return unexpected_nested(ErrorCode::GitGenericError, resolve_rval.error());
+    if (!m_target_head) {
+        if (auto resolve_rval = resolve_commit("HEAD", gac, m_target_head); !resolve_rval)
+            return unexpected_nested(ErrorCode::GitGenericError, resolve_rval.error());
+    }
 
     auto rval = checkout_commit(first_commit);
     if (!rval)
         return unexpected_nested(ErrorCode::GitGenericError, rval.error());
 
-    git_commit_ptr new_head(std::move(rval.value()));
+    m_first_commit = std::move(rval.value());
 
     const auto new_branch_name = fmt::format("git-se/{}", first_commit);
-    auto rval_branch = create_branch(new_branch_name, new_head);
+    auto rval_branch = create_branch(new_branch_name, m_first_commit);
     if (!rval_branch)
         return unexpected_nested(ErrorCode::GitGenericError, rval_branch.error());
 
     if (auto err = git_repository_set_head(m_repo.get(), fmt::format("refs/heads/git-se/{}", first_commit).c_str()); err != GIT_OK)
         return unexpected_explained(ErrorCode::GitRepositoryOpenError, explain_repository_fail, err);
 
-    if (auto apply_rval = apply_diff(new_head, head_commit); !apply_rval)
-        return unexpected_nested(ErrorCode::GitGenericError, rval_branch.error());
+    if (auto apply_rval = apply_diff(m_first_commit, m_target_head); !apply_rval)
+        return unexpected_nested(ErrorCode::GitGenericError, apply_rval.error());
 
     git_oid tree_id, commit_id;
     git_index *index = nullptr;
@@ -136,7 +137,7 @@ Result<> Repository::squash(const std::string& first_commit) {
 
     git_signature_ptr sig_ptr(sig);
 
-    const git_commit* commit2 = new_head.get();
+    const git_commit* commit2 = m_first_commit.get();
 
     if (auto err = git_commit_create_v(
             &commit_id, m_repo.get(), "HEAD", sig, sig, NULL, "Git SE auto generated message", tree,
@@ -144,6 +145,82 @@ Result<> Repository::squash(const std::string& first_commit) {
         return unexpected_explained(ErrorCode::GitRepositoryOpenError, explain_repository_fail, err);
 
     return {};
+}
+
+static std::string explain_squash_diff_error(const Error& e) {
+    return fmt::format("{}{}", explain_generic(e), "failed to create squash diff");
+}
+
+Result<SquashDiffPtr> Repository::create_squash_diff() {
+    if (!m_target_head)
+        return unexpected_explained(ErrorCode::GitSquashDiffCreateError, explain_squash_diff_error, 0);
+    if (!m_first_commit)
+        return unexpected_explained(ErrorCode::GitSquashDiffCreateError, explain_squash_diff_error, 0);
+
+    git_annotated_commit_ptr gac;
+
+    git_tree* tree1 = nullptr;
+    if (auto err = git_commit_tree(&tree1, m_first_commit.get()); err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitGenericError, explain_repository_fail, err);
+
+    git_tree_ptr tree1_ptr(tree1);
+
+    git_tree* tree2 = nullptr;
+    if (auto err = git_commit_tree(&tree2, m_target_head.get()); err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitGenericError, explain_repository_fail, err);
+
+    git_tree_ptr tree2_ptr(tree2);
+
+    git_diff_options opts = GIT_DIFF_OPTIONS_INIT;
+    opts.flags |= GIT_DIFF_SHOW_BINARY;
+
+    git_diff *diff = nullptr;
+    if (auto err = git_diff_tree_to_tree(&diff, m_repo.get(), tree1, tree2, &opts); err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitGenericError, explain_repository_fail, err);
+
+    git_diff_ptr diff_ptr(diff);
+
+    SquashDiffPtr sd(new SquashDiff());
+    sd->m_diff_list.reserve(10);
+
+    auto file_cb = [](const git_diff_delta *delta, float progress, void *payload) -> int {
+        SquashDiff::diff_list* lod = reinterpret_cast<SquashDiff::diff_list*>(payload);
+        SquashDiff::diff_list_item item;
+
+        item.original_delta = *delta;
+        if (delta->new_file.path) item.m_path_new = delta->new_file.path;
+        if (delta->old_file.path) item.m_path_old = delta->old_file.path;
+
+        item.original_delta.new_file.path = item.m_path_new.c_str();
+        item.original_delta.old_file.path = item.m_path_old.c_str();
+
+        qDebug() << "diff, new: "<<item.m_path_new<<", old: "<<item.m_path_old;
+        lod->push_back(std::move(item));
+        return GIT_OK;
+    };
+
+    auto binary_cb = [](const git_diff_delta *delta, const git_diff_binary *binary, void *payload) -> int {
+        auto& sd = *reinterpret_cast<SquashDiff::diff_list*>(payload);
+        if (binary->contains_data) {
+            auto& item = sd.back();
+            item.original_binary_delta = *binary;
+            if (binary->new_file.datalen > 0) {
+                item.binary_data_new.resize(binary->new_file.datalen);
+                memcpy(item.binary_data_new.data(), binary->new_file.data, binary->new_file.datalen);
+            }
+            if (binary->old_file.datalen > 0) {
+                item.binary_data_old.resize(binary->old_file.datalen);
+                memcpy(item.binary_data_old.data(), binary->old_file.data, binary->old_file.datalen);
+            }
+            item.original_binary_delta.new_file.data = item.binary_data_new.data();
+            item.original_binary_delta.old_file.data = item.binary_data_old.data();
+        }
+        return GIT_OK;
+    };
+
+    git_diff_foreach(diff, file_cb , binary_cb, nullptr, nullptr, &sd->m_diff_list);
+
+    return sd;
 }
 
 Result<git_annotated_commit_ptr> Repository::resolve_commit(const std::string &commit) {
@@ -237,16 +314,17 @@ Result<> Repository::apply_diff(const git_commit_ptr &commit1, const git_commit_
 
     git_tree_ptr tree2_ptr(tree2);
 
+    git_diff_options opts = GIT_DIFF_OPTIONS_INIT;
+    opts.flags |= GIT_DIFF_SHOW_BINARY;
+
     git_diff *diff = nullptr;
-    if (auto err = git_diff_tree_to_tree(&diff, m_repo.get(), tree1, tree2, NULL); err != GIT_OK)
+    if (auto err = git_diff_tree_to_tree(&diff, m_repo.get(), tree1, tree2, &opts); err != GIT_OK)
         return unexpected_explained(ErrorCode::GitGenericError, explain_repository_fail, err);
 
     git_diff_ptr diff_ptr(diff);
 
     if (auto err = git_apply(m_repo.get(), diff, GIT_APPLY_LOCATION_BOTH, nullptr); err != GIT_OK)
         return unexpected_explained(ErrorCode::GitGenericError, explain_repository_fail, err);
-
-    // now commit changes
 
     return {};
 }
