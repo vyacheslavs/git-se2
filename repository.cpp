@@ -86,9 +86,10 @@ public:
 
 Result<> Repository::squash(const std::string& first_commit) {
     git_annotated_commit_ptr gac;
-    git_commit_ptr head_commit;
-    if (auto resolve_rval = resolve_commit("HEAD", gac, head_commit); !resolve_rval)
-        return unexpected_nested(ErrorCode::GitGenericError, resolve_rval.error());
+    if (!m_target_head) {
+        if (auto resolve_rval = resolve_commit("HEAD", gac, m_target_head); !resolve_rval)
+            return unexpected_nested(ErrorCode::GitGenericError, resolve_rval.error());
+    }
 
     auto rval = checkout_commit(first_commit);
     if (!rval)
@@ -104,8 +105,8 @@ Result<> Repository::squash(const std::string& first_commit) {
     if (auto err = git_repository_set_head(m_repo.get(), fmt::format("refs/heads/git-se/{}", first_commit).c_str()); err != GIT_OK)
         return unexpected_explained(ErrorCode::GitRepositoryOpenError, explain_repository_fail, err);
 
-    if (auto apply_rval = apply_diff(new_head, head_commit); !apply_rval)
-        return unexpected_nested(ErrorCode::GitGenericError, rval_branch.error());
+    if (auto apply_rval = apply_diff(m_first_commit, m_target_head); !apply_rval)
+        return unexpected_nested(ErrorCode::GitGenericError, apply_rval.error());
 
     git_oid tree_id, commit_id;
     git_index *index = nullptr;
