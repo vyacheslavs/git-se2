@@ -241,8 +241,11 @@ Result<> Repository::apply_diff(const git_commit_ptr &commit1, const git_commit_
 
     git_tree_ptr tree2_ptr(tree2);
 
+    git_diff_options opts = GIT_DIFF_OPTIONS_INIT;
+    opts.flags |= GIT_DIFF_SHOW_BINARY;
+
     git_diff *diff = nullptr;
-    if (auto err = git_diff_tree_to_tree(&diff, m_repo.get(), tree1, tree2, NULL); err != GIT_OK)
+    if (auto err = git_diff_tree_to_tree(&diff, m_repo.get(), tree1, tree2, &opts); err != GIT_OK)
         return unexpected_explained(ErrorCode::GitGenericError, explain_repository_fail, err);
 
     git_diff_ptr diff_ptr(diff);
