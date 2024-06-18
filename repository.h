@@ -6,6 +6,7 @@
 #include <git2.h>
 #include <QtCore/qglobal.h>
 #include "git-etcetera.h"
+#include "squashdiff.h"
 
 namespace gitse2 {
 
@@ -18,6 +19,7 @@ namespace gitse2 {
 
             [[nodiscard]] static Result<RepositoryRef> open();
             [[nodiscard]] Result<> squash(const std::string& first_commit);
+            [[nodiscard]] Result<SquashDiffPtr> create_squash_diff();
 
         private:
             Repository() = default;

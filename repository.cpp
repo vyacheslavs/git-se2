@@ -150,6 +150,79 @@ Result<> Repository::squash(const std::string& first_commit) {
 static std::string explain_squash_diff_error(const Error& e) {
     return fmt::format("{}{}", explain_generic(e), "failed to create squash diff");
 }
+
+Result<SquashDiffPtr> Repository::create_squash_diff() {
+    if (!m_target_head)
+        return unexpected_explained(ErrorCode::GitSquashDiffCreateError, explain_squash_diff_error, 0);
+    if (!m_first_commit)
+        return unexpected_explained(ErrorCode::GitSquashDiffCreateError, explain_squash_diff_error, 0);
+
+    git_annotated_commit_ptr gac;
+
+    git_tree* tree1 = nullptr;
+    if (auto err = git_commit_tree(&tree1, m_first_commit.get()); err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitGenericError, explain_repository_fail, err);
+
+    git_tree_ptr tree1_ptr(tree1);
+
+    git_tree* tree2 = nullptr;
+    if (auto err = git_commit_tree(&tree2, m_target_head.get()); err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitGenericError, explain_repository_fail, err);
+
+    git_tree_ptr tree2_ptr(tree2);
+
+    git_diff_options opts = GIT_DIFF_OPTIONS_INIT;
+    opts.flags |= GIT_DIFF_SHOW_BINARY;
+
+    git_diff *diff = nullptr;
+    if (auto err = git_diff_tree_to_tree(&diff, m_repo.get(), tree1, tree2, &opts); err != GIT_OK)
+        return unexpected_explained(ErrorCode::GitGenericError, explain_repository_fail, err);
+
+    git_diff_ptr diff_ptr(diff);
+
+    SquashDiffPtr sd(new SquashDiff());
+    sd->m_diff_list.reserve(10);
+
+    auto file_cb = [](const git_diff_delta *delta, float progress, void *payload) -> int {
+        SquashDiff::diff_list* lod = reinterpret_cast<SquashDiff::diff_list*>(payload);
+        SquashDiff::diff_list_item item;
+
+        item.original_delta = *delta;
+        if (delta->new_file.path) item.m_path_new = delta->new_file.path;
+        if (delta->old_file.path) item.m_path_old = delta->old_file.path;
+
+        item.original_delta.new_file.path = item.m_path_new.c_str();
+        item.original_delta.old_file.path = item.m_path_old.c_str();
+
+        qDebug() << "diff, new: "<<item.m_path_new<<", old: "<<item.m_path_old;
+        lod->push_back(std::move(item));
+        return GIT_OK;
+    };
+
+    auto binary_cb = [](const git_diff_delta *delta, const git_diff_binary *binary, void *payload) -> int {
+        auto& sd = *reinterpret_cast<SquashDiff::diff_list*>(payload);
+        if (binary->contains_data) {
+            auto& item = sd.back();
+            item.original_binary_delta = *binary;
+            if (binary->new_file.datalen > 0) {
+                item.binary_data_new.resize(binary->new_file.datalen);
+                memcpy(item.binary_data_new.data(), binary->new_file.data, binary->new_file.datalen);
+            }
+            if (binary->old_file.datalen > 0) {
+                item.binary_data_old.resize(binary->old_file.datalen);
+                memcpy(item.binary_data_old.data(), binary->old_file.data, binary->old_file.datalen);
+            }
+            item.original_binary_delta.new_file.data = item.binary_data_new.data();
+            item.original_binary_delta.old_file.data = item.binary_data_old.data();
+        }
+        return GIT_OK;
+    };
+
+    git_diff_foreach(diff, file_cb , binary_cb, nullptr, nullptr, &sd->m_diff_list);
+
+    return sd;
+}
+
 Result<git_annotated_commit_ptr> Repository::resolve_commit(const std::string &commit) {
     int err = 0;
     git_reference *ref = NULL;
