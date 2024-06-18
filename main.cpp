@@ -2,6 +2,8 @@
 #include <QQmlApplicationEngine>
 #include "program_options.h"
 #include "repository.h"
+#include "squashdifflist.h"
+#include <QQmlContext>
 
 int main(int argc, char *argv[])
 {
@@ -25,7 +27,21 @@ int main(int argc, char *argv[])
         return 3;
     }
 
+    SquashDiffList sdl;
+
+    auto squash_diff = repo.value()->create_squash_diff();
+    if (!squash_diff) {
+        qCritical().noquote() << gitse2::explain_nested_error(squash_diff.error());
+        return 4;
+    }
+
+    sdl.append(std::move(squash_diff.value()));
+
     QQmlApplicationEngine engine;
+
+    auto *context = engine.rootContext();
+    context->setContextProperty("repeater_model", &sdl);
+
     const QUrl url(QStringLiteral("qrc:/git-se2/Main.qml"));
     QObject::connect(
         &engine,
