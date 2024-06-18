@@ -146,6 +146,9 @@ Result<> Repository::squash(const std::string& first_commit) {
     return {};
 }
 
+static std::string explain_squash_diff_error(const Error& e) {
+    return fmt::format("{}{}", explain_generic(e), "failed to create squash diff");
+}
 Result<git_annotated_commit_ptr> Repository::resolve_commit(const std::string &commit) {
     int err = 0;
     git_reference *ref = NULL;
