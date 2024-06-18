@@ -24,6 +24,7 @@ namespace gitse2 {
 
             std::string m_repo_path {"."};
             git_repository_ptr m_repo;
+            git_commit_ptr m_first_commit;
 
             [[nodiscard]] Result<git_annotated_commit_ptr> resolve_commit(const std::string& commit);
             [[nodiscard]] Result<> resolve_commit(const std::string& commit, git_annotated_commit_ptr& gac, git_commit_ptr& gc);

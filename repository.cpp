@@ -94,10 +94,10 @@ Result<> Repository::squash(const std::string& first_commit) {
     if (!rval)
         return unexpected_nested(ErrorCode::GitGenericError, rval.error());
 
-    git_commit_ptr new_head(std::move(rval.value()));
+    m_first_commit = std::move(rval.value());
 
     const auto new_branch_name = fmt::format("git-se/{}", first_commit);
-    auto rval_branch = create_branch(new_branch_name, new_head);
+    auto rval_branch = create_branch(new_branch_name, m_first_commit);
     if (!rval_branch)
         return unexpected_nested(ErrorCode::GitGenericError, rval_branch.error());
 
@@ -136,7 +136,7 @@ Result<> Repository::squash(const std::string& first_commit) {
 
     git_signature_ptr sig_ptr(sig);
 
-    const git_commit* commit2 = new_head.get();
+    const git_commit* commit2 = m_first_commit.get();
 
     if (auto err = git_commit_create_v(
             &commit_id, m_repo.get(), "HEAD", sig, sig, NULL, "Git SE auto generated message", tree,
