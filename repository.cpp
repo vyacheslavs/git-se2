@@ -250,8 +250,6 @@ Result<> Repository::apply_diff(const git_commit_ptr &commit1, const git_commit_
     if (auto err = git_apply(m_repo.get(), diff, GIT_APPLY_LOCATION_BOTH, nullptr); err != GIT_OK)
         return unexpected_explained(ErrorCode::GitGenericError, explain_repository_fail, err);
 
-    // now commit changes
-
     return {};
 }
 
