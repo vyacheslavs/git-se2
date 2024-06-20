@@ -7,6 +7,7 @@
 #include <QString>
 #include <QObject>
 #include "difflistitem.h"
+#include "error-handling.h"
 
 namespace gitse2 {
 
@@ -27,6 +28,7 @@ namespace gitse2 {
 
             DiffList m_diff_list;
             QString m_diff_title {"Untitled"};
+            [[nodiscard]] Result<> initialize();
 
             friend class Repository;
     };

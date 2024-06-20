@@ -206,6 +206,9 @@ Result<SquashDiffPtr> Repository::create_squash_diff() {
 
     git_diff_foreach(diff, file_cb , binary_cb, nullptr, nullptr, &sd->m_diff_list);
 
+    if (auto rval = sd->initialize(); !rval)
+        return unexpected_nested(ErrorCode::GitSquashDiffCreateError, rval.error());
+
     return sd;
 }
 
