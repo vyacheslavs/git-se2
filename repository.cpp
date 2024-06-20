@@ -89,6 +89,7 @@ Result<> Repository::squash(const std::string& first_commit) {
     if (!m_target_head) {
         if (auto resolve_rval = resolve_commit("HEAD", gac, m_target_head); !resolve_rval)
             return unexpected_nested(ErrorCode::GitGenericError, resolve_rval.error());
+        qDebug() << fmt::format("HEAD resolved to: {}", m_target_head);
     }
 
     auto rval = checkout_commit(first_commit);
@@ -96,6 +97,7 @@ Result<> Repository::squash(const std::string& first_commit) {
         return unexpected_nested(ErrorCode::GitGenericError, rval.error());
 
     m_first_commit = std::move(rval.value());
+    qDebug() << fmt::format("first_commit: {}", m_first_commit);
 
     const auto new_branch_name = fmt::format("git-se/{}", first_commit);
     auto rval_branch = create_branch(new_branch_name, m_first_commit);
