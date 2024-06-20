@@ -22,6 +22,9 @@ qt_add_qml_module(gitse2
     SOURCES repository.h repository.cpp git-etcetera.h
     SOURCES squashdiff.h squashdiff.cpp
     SOURCES squashdifflist.h squashdifflist.cpp
+    SOURCES difftreeitem.h difftreeitem.cpp
+    SOURCES difflistitem.h difflistitem.cpp
+    SOURCES difftreemodel.h difftreemodel.cpp
 )
 
 set(BUILD_TESTS OFF)
