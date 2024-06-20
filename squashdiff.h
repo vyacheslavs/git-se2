@@ -4,30 +4,37 @@
 #include <memory>
 #include <QtCore/qglobal.h>
 #include <git2.h>
-#include <string>
-#include <vector>
+#include <QString>
+#include <QObject>
+#include "difflistitem.h"
+#include "error-handling.h"
+#include "difftreemodel.h"
 
 namespace gitse2 {
 
-    class SquashDiff {
+    class SquashDiff : public QObject {
+        Q_OBJECT
+
         public:
 
-        struct diff_list_item {
-            git_diff_delta original_delta;
-            std::string m_path_new;
-            std::string m_path_old;
+            Q_PROPERTY(QString title READ diff_title NOTIFY diff_title_changed)
+            Q_PROPERTY(const DiffTreeModel* tree_model READ tree_model NOTIFY tree_model_changed)
 
-            git_diff_binary original_binary_delta;
-            std::vector<char> binary_data_new;
-            std::vector<char> binary_data_old;
-        };
+            const QString& diff_title() const;
+            const DiffTreeModel* tree_model() const;
 
-        using diff_list = std::vector<diff_list_item>;
+        signals:
+            void diff_title_changed(const QString& new_title);
+            void tree_model_changed(const DiffTreeModel* new_model);
 
         private:
             SquashDiff() = default;
 
-            diff_list m_diff_list;
+            DiffList m_diff_list;
+            QString m_diff_title {"Untitled"};
+            DiffTreeModelPtr m_tree_model;
+
+            [[nodiscard]] Result<> initialize();
 
             friend class Repository;
     };

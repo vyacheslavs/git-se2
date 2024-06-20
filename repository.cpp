@@ -3,6 +3,7 @@
 #include <qglobal.h>
 #include <sstream>
 #include <fmt/format.h>
+#include "difflistitem.h"
 
 using namespace gitse2;
 
@@ -89,6 +90,7 @@ Result<> Repository::squash(const std::string& first_commit) {
     if (!m_target_head) {
         if (auto resolve_rval = resolve_commit("HEAD", gac, m_target_head); !resolve_rval)
             return unexpected_nested(ErrorCode::GitGenericError, resolve_rval.error());
+        qDebug() << fmt::format("HEAD resolved to: {}", m_target_head);
     }
 
     auto rval = checkout_commit(first_commit);
@@ -96,6 +98,7 @@ Result<> Repository::squash(const std::string& first_commit) {
         return unexpected_nested(ErrorCode::GitGenericError, rval.error());
 
     m_first_commit = std::move(rval.value());
+    qDebug() << fmt::format("first_commit: {}", m_first_commit);
 
     const auto new_branch_name = fmt::format("git-se/{}", first_commit);
     auto rval_branch = create_branch(new_branch_name, m_first_commit);
@@ -184,41 +187,27 @@ Result<SquashDiffPtr> Repository::create_squash_diff() {
     sd->m_diff_list.reserve(10);
 
     auto file_cb = [](const git_diff_delta *delta, float progress, void *payload) -> int {
-        SquashDiff::diff_list* lod = reinterpret_cast<SquashDiff::diff_list*>(payload);
-        SquashDiff::diff_list_item item;
+        auto& lod = *reinterpret_cast<DiffList*>(payload);
+        DiffListItemPtr item(std::make_unique<DiffListItem>());
 
-        item.original_delta = *delta;
-        if (delta->new_file.path) item.m_path_new = delta->new_file.path;
-        if (delta->old_file.path) item.m_path_old = delta->old_file.path;
+        item->add_delta(delta);
+        lod.push_back(std::move(item));
 
-        item.original_delta.new_file.path = item.m_path_new.c_str();
-        item.original_delta.old_file.path = item.m_path_old.c_str();
-
-        qDebug() << "diff, new: "<<item.m_path_new<<", old: "<<item.m_path_old;
-        lod->push_back(std::move(item));
         return GIT_OK;
     };
 
     auto binary_cb = [](const git_diff_delta *delta, const git_diff_binary *binary, void *payload) -> int {
-        auto& sd = *reinterpret_cast<SquashDiff::diff_list*>(payload);
+        auto& sd = *reinterpret_cast<DiffList*>(payload);
         if (binary->contains_data) {
             auto& item = sd.back();
-            item.original_binary_delta = *binary;
-            if (binary->new_file.datalen > 0) {
-                item.binary_data_new.resize(binary->new_file.datalen);
-                memcpy(item.binary_data_new.data(), binary->new_file.data, binary->new_file.datalen);
-            }
-            if (binary->old_file.datalen > 0) {
-                item.binary_data_old.resize(binary->old_file.datalen);
-                memcpy(item.binary_data_old.data(), binary->old_file.data, binary->old_file.datalen);
-            }
-            item.original_binary_delta.new_file.data = item.binary_data_new.data();
-            item.original_binary_delta.old_file.data = item.binary_data_old.data();
-        }
+            item->add_binary_delta(binary);}
         return GIT_OK;
     };
 
     git_diff_foreach(diff, file_cb , binary_cb, nullptr, nullptr, &sd->m_diff_list);
+
+    if (auto rval = sd->initialize(); !rval)
+        return unexpected_nested(ErrorCode::GitSquashDiffCreateError, rval.error());
 
     return sd;
 }
