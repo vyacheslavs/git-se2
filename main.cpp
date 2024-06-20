@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
     auto *context = engine.rootContext();
     context->setContextProperty("repeater_model", &sdl);
 
-    const QUrl url(QStringLiteral("qrc:/git-se2/Main.qml"));
+    const QUrl url(QStringLiteral("qrc:/ldd/so/gitse2/Main.qml"));
     QObject::connect(
         &engine,
         &QQmlApplicationEngine::objectCreationFailed,
